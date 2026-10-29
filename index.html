@@ -156,6 +156,11 @@ $('#play').onclick = () => play();
 
 $('#fill').onclick = $('#exit').onclick = () => document.body.classList.toggle('fill');
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('fill'); });
+// clicking the video focuses the YouTube iframe, which swallows Esc; pull focus back while filling.
+// ponytail: costs YouTube's own keyboard shortcuts (space, arrows) in fill mode; mouse controls still work
+window.addEventListener('blur', () => setTimeout(() => {
+  if (document.body.classList.contains('fill')) document.activeElement?.blur();
+}));
 $('#reverse').onclick = () => { ids.reverse(); $('#sort').value = 'custom'; save(); render(); };
 
 const dates = {};
