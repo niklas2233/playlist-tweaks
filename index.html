@@ -46,7 +46,6 @@
   </select>
   <button id="reverse">Reverse</button>
   <button id="fill" title="Fill the browser window (Esc to exit)">⛶ Fill window</button>
-  <label><input type="checkbox" id="sb" checked> Skip sponsors (SponsorBlock)</label>
   <input id="key" placeholder="YouTube API key (only needed for upload date)">
 </div>
 <div id="wrap">
@@ -157,26 +156,6 @@ $('#play').onclick = () => play();
 
 $('#fill').onclick = $('#exit').onclick = () => document.body.classList.toggle('fill');
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('fill'); });
-
-try { $('#sb').checked = localStorage.getItem('sb') !== '0'; } catch {}
-$('#sb').onchange = () => { try { localStorage.setItem('sb', $('#sb').checked ? '1' : '0'); } catch {} };
-
-// SponsorBlock: fetch skip segments per video, seek past them while playing
-const SB_CATS = encodeURIComponent(JSON.stringify(['sponsor', 'selfpromo', 'interaction']));
-const segs = {};
-const getSegs = id => segs[id] ??= fetch(`https://sponsor.ajay.app/api/skipSegments?videoID=${id}&categories=${SB_CATS}`)
-  .then(r => r.ok ? r.json() : []) // 404 = no segments for this video
-  .catch(() => []);
-// ponytail: 500ms polling, a skip can land up to half a second late
-setInterval(async () => {
-  if (!$('#sb').checked || player?.getPlayerState?.() !== YT.PlayerState.PLAYING) return;
-  const id = currentId();
-  if (!id) return;
-  const list = await getSegs(id);
-  const t = player.getCurrentTime();
-  const s = list.find(s => t >= s.segment[0] && t < s.segment[1] - 0.5);
-  if (s && currentId() === id) player.seekTo(s.segment[1], true);
-}, 500);
 $('#reverse').onclick = () => { ids.reverse(); $('#sort').value = 'custom'; save(); render(); };
 
 const dates = {};
