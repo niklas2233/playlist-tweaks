@@ -165,6 +165,7 @@ $('#reverse').onclick = () => { ids.reverse(); $('#sort').value = 'custom'; save
 
 const dates = {};
 try { $('#key').value = localStorage.getItem('ytkey') || ''; } catch {}
+$('#key').oninput = () => { try { localStorage.setItem('ytkey', $('#key').value.trim()); } catch {} };
 
 // upload dates aren't exposed by the embed player or oEmbed, so this needs the Data API
 async function fetchDates() {
