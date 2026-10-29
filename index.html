@@ -4,29 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Playlist Order</title>
+<meta name="darkreader-lock"><!-- page is already dark; stop Dark Reader double-darkening it -->
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 0 auto; padding: 16px; background: #111; color: #eee; }
-  form, .bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-  input { flex: 1; min-width: 200px; padding: 8px; }
-  button { padding: 8px 12px; cursor: pointer; }
+  :root { color-scheme: dark; --bg: #0f0f0f; --panel: #1a1a1a; --hover: #262626; --line: #303030; --text: #e8e8e8; --dim: #9a9a9a; --accent: #3ea6ff; }
+  html { background: var(--bg); }
+  body { font: 14px/1.4 system-ui, sans-serif; max-width: 1400px; margin: 0 auto; padding: 16px; color: var(--text); }
+  form, .bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  input, select, button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  input { flex: 1; min-width: 200px; }
+  input::placeholder { color: var(--dim); }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button, select { cursor: pointer; }
+  button:hover, select:hover { background: var(--hover); }
+  #load button, #play { background: var(--accent); border-color: var(--accent); color: #0f0f0f; font-weight: 600; }
+  #load button:hover, #play:hover { filter: brightness(1.1); }
   #wrap { display: grid; grid-template-columns: 1fr 400px; gap: 16px; }
   @media (max-width: 850px) { #wrap { grid-template-columns: 1fr; } }
-  #player { width: 100%; aspect-ratio: 16/9; height: auto; }
+  #player { width: 100%; aspect-ratio: 16/9; height: auto; border-radius: 12px; background: #000; display: block; }
   #stage { position: relative; }
   #exit { display: none; position: absolute; top: 8px; right: 8px; z-index: 1; opacity: .6; }
   #exit:hover { opacity: 1; }
   body.fill { overflow: hidden; }
   body.fill #stage { position: fixed; inset: 0; z-index: 9; background: #000; }
-  body.fill #player { height: 100%; aspect-ratio: auto; }
+  body.fill #player { height: 100%; aspect-ratio: auto; border-radius: 0; }
   body.fill #exit { display: block; }
-  ol { list-style: none; padding: 0; margin: 0; max-height: 75vh; overflow: auto; }
-  li { display: flex; gap: 8px; align-items: center; padding: 4px; border-radius: 4px; cursor: grab; }
-  li:hover { background: #222; }
-  li.playing { background: #3a2a2a; }
+  ol { list-style: none; padding: 4px; margin: 0; max-height: 75vh; overflow: auto; background: var(--panel); border-radius: 12px; }
+  ol:empty { display: none; }
+  li { display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; cursor: grab; }
+  li:hover { background: var(--hover); }
+  li.playing { background: #263850; }
   li.drag { opacity: .4; }
-  li img { width: 96px; aspect-ratio: 16/9; object-fit: cover; cursor: pointer; }
-  li span { flex: 1; font-size: 14px; }
-  li button { padding: 2px 6px; }
+  li b { width: 2.2em; text-align: right; color: var(--dim); font-weight: 400; font-size: 12px; }
+  li img { width: 96px; aspect-ratio: 16/9; object-fit: cover; cursor: pointer; border-radius: 6px; }
+  li span { flex: 1; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  li button { padding: 2px 6px; background: none; border-color: transparent; color: var(--dim); }
+  li button:hover { color: var(--text); background: var(--line); }
 </style>
 </head>
 <body>
