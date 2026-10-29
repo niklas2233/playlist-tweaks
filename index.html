@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Playlist Order</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1200px; margin: 0 auto; padding: 16px; background: #111; color: #eee; }
+  form, .bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  input { flex: 1; min-width: 200px; padding: 8px; }
+  button { padding: 8px 12px; cursor: pointer; }
+  #wrap { display: grid; grid-template-columns: 1fr 400px; gap: 16px; }
+  @media (max-width: 850px) { #wrap { grid-template-columns: 1fr; } }
+  #player { width: 100%; aspect-ratio: 16/9; height: auto; }
+  ol { list-style: none; padding: 0; margin: 0; max-height: 75vh; overflow: auto; }
+  li { display: flex; gap: 8px; align-items: center; padding: 4px; border-radius: 4px; cursor: grab; }
+  li:hover { background: #222; }
+  li.playing { background: #3a2a2a; }
+  li.drag { opacity: .4; }
+  li img { width: 96px; aspect-ratio: 16/9; object-fit: cover; cursor: pointer; }
+  li span { flex: 1; font-size: 14px; }
+  li button { padding: 2px 6px; }
+</style>
+</head>
+<body>
+<form id="load">
+  <input id="url" placeholder="Paste a YouTube playlist URL or ID" required>
+  <button>Load</button>
+</form>
+<div class="bar">
+  <button id="play">▶ Play in this order</button>
+  <select id="sort" aria-label="Sort order">
+    <option value="default">Default order</option>
+    <option value="title">Title (A–Z)</option>
+    <option value="newest">Upload date (newest)</option>
+    <option value="oldest">Upload date (oldest)</option>
+    <option value="shuffle">Shuffle</option>
+    <option value="custom" hidden>Custom order</option>
+  </select>
+  <button id="reverse">Reverse</button>
+  <input id="key" placeholder="YouTube API key (only needed for upload date)">
+</div>
+<div id="wrap">
+  <div><div id="player"></div></div>
+  <ol id="list"></ol>
+</div>
+
+<script>
+let player, listId, ids = [], original = [];
+const titles = {};
+const $ = s => document.querySelector(s);
+
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.append(tag);
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('player', { events: { onStateChange: highlight } });
+}
+
+$('#load').onsubmit = e => {
+  e.preventDefault();
+  const v = $('#url').value.trim();
+  try { listId = new URL(v).searchParams.get('list') || v; } catch { listId = v; }
+  // ponytail: let the embedded player resolve the playlist, no API key needed. YouTube caps this at ~200 videos.
+  player.cuePlaylist({ list: listId, listType: 'playlist' });
+  let tries = 0;
+  const poll = setInterval(() => {
+    const got = player.getPlaylist();
+    if (got?.length || ++tries > 40) {
+      clearInterval(poll);
+      if (!got?.length) return alert('Could not load that playlist (private, or bad ID?)');
+      original = got.slice();
+      // re-cue as a plain array; otherwise the player keeps the list-ID order on the next loadPlaylist
+      player.cuePlaylist(got);
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem('order:' + listId)); } catch {}
+      // keep saved order only if it is still the same set of videos
+      const keep = saved && saved.length === got.length && saved.every(id => got.includes(id));
+      ids = keep ? saved : got.slice();
+      $('#sort').value = keep && saved.join() !== got.join() ? 'custom' : 'default';
+      render();
+    }
+  }, 250);
+};
+
+function save() {
+  try { localStorage.setItem('order:' + listId, JSON.stringify(ids)); } catch {}
+}
+
+function render() {
+  const ol = $('#list');
+  ol.innerHTML = '';
+  ids.forEach((id, i) => {
+    const li = document.createElement('li');
+    li.draggable = true;
+    li.dataset.id = id;
+    li.innerHTML = `<b>${i + 1}</b><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt="" title="Play from here">
+      <span></span><button title="Move up">▲</button><button title="Move down">▼</button>`;
+    li.querySelector('span').textContent = titles[id] || id;
+    li.querySelector('img').onclick = () => play(i);
+    const [up, down] = li.querySelectorAll('button');
+    up.onclick = () => move(i, i - 1);
+    down.onclick = () => move(i, i + 1);
+    li.ondragstart = e => { e.dataTransfer.setData('text/plain', i); li.classList.add('drag'); };
+    li.ondragend = () => li.classList.remove('drag');
+    li.ondragover = e => e.preventDefault();
+    li.ondrop = e => { e.preventDefault(); move(+e.dataTransfer.getData('text/plain'), i); };
+    ol.append(li);
+    if (!titles[id]) fetchTitle(id);
+  });
+  highlight();
+}
+
+function fetchTitle(id) {
+  titles[id] = id; // mark as in-flight
+  fetch('https://noembed.com/embed?url=https://www.youtube.com/watch?v=' + id)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.title) return;
+      titles[id] = d.title;
+      const span = document.querySelector(`li[data-id="${id}"] span`);
+      if (span) span.textContent = d.title;
+    })
+    .catch(() => {});
+}
+
+function move(from, to) {
+  if (to < 0 || to >= ids.length || from === to) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  $('#sort').value = 'custom';
+  save();
+  render();
+}
+
+function play(i = 0) {
+  if (ids.length) player.loadPlaylist({ playlist: ids, index: i });
+}
+
+function highlight() {
+  const cur = player?.getVideoUrl?.().match(/v=([\w-]{11})/)?.[1];
+  document.querySelectorAll('#list li').forEach(li => li.classList.toggle('playing', li.dataset.id === cur));
+}
+
+$('#play').onclick = () => play();
+$('#reverse').onclick = () => { ids.reverse(); $('#sort').value = 'custom'; save(); render(); };
+
+const dates = {};
+try { $('#key').value = localStorage.getItem('ytkey') || ''; } catch {}
+
+// upload dates aren't exposed by the embed player or oEmbed, so this needs the Data API
+async function fetchDates() {
+  const key = $('#key').value.trim();
+  if (!key) { alert('Sorting by upload date needs a YouTube Data API key (free from Google Cloud Console).'); return false; }
+  try { localStorage.setItem('ytkey', key); } catch {}
+  const missing = original.filter(id => !dates[id]);
+  for (let i = 0; i < missing.length; i += 50) {
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&key=${encodeURIComponent(key)}&id=${missing.slice(i, i + 50).join()}`;
+    const r = await fetch(url).then(r => r.json()).catch(e => ({ error: e }));
+    if (r.error) { alert('YouTube API error: ' + r.error.message); return false; }
+    r.items.forEach(v => { dates[v.id] = v.snippet.publishedAt; titles[v.id] = v.snippet.title; });
+  }
+  return true;
+}
+
+$('#sort').onchange = async () => {
+  const s = $('#sort').value;
+  if (s === 'default') ids = original.slice();
+  else if (s === 'title') ids.sort((a, b) => (titles[a] || a).localeCompare(titles[b] || b));
+  else if (s === 'shuffle') {
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+  } else {
+    if (!await fetchDates()) return;
+    const dir = s === 'newest' ? -1 : 1;
+    // ISO timestamps sort as strings; deleted/private videos have no date and end up first/last
+    ids.sort((a, b) => (dates[a] || '').localeCompare(dates[b] || '') * dir);
+  }
+  save(); render();
+};
+</script>
+</body>
+</html>
