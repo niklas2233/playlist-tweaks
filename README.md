@@ -5,6 +5,12 @@ Play a YouTube playlist in any order: drag to reorder, or sort by title, upload 
 ## Run
 
 ```
+docker run -d -p 8000:80 ghcr.io/niklas2233/playlist-tweaks:latest
+```
+
+Or build it yourself:
+
+```
 docker build -t playlist-tweaks .
 docker run -d -p 8000:80 playlist-tweaks
 ```
