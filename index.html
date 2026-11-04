@@ -172,7 +172,25 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') document.bod
 // YouTube-style hotkeys for when the page (not the iframe) has focus
 const seek = s => player.seekTo(Math.max(0, player.getCurrentTime() + s), true);
 const toggle = () => player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
-const keys = { j: () => seek(-10), l: () => seek(10), k: toggle, ' ': toggle, ArrowLeft: () => seek(-5), ArrowRight: () => seek(5) };
+const volume = d => { player.unMute(); player.setVolume(Math.min(100, Math.max(0, player.getVolume() + d))); };
+const speed = d => {
+  const r = player.getAvailablePlaybackRates(), i = r.indexOf(player.getPlaybackRate()) + d;
+  if (r[i]) player.setPlaybackRate(r[i]);
+};
+// frame step only while paused, like YouTube; ponytail: assumes 30fps, the API doesn't expose the real rate
+const frame = d => { if (player.getPlayerState() !== YT.PlayerState.PLAYING) seek(d / 30); };
+const keys = {
+  j: () => seek(-10), l: () => seek(10), k: toggle, ' ': toggle,
+  ArrowLeft: () => seek(-5), ArrowRight: () => seek(5),
+  ArrowUp: () => volume(5), ArrowDown: () => volume(-5),
+  m: () => player.isMuted() ? player.unMute() : player.mute(),
+  f: () => document.body.classList.toggle('fill'),
+  n: () => player.nextVideo(), p: () => player.previousVideo(),
+  '<': () => speed(-1), '>': () => speed(1), ',': () => frame(-1), '.': () => frame(1),
+  Home: () => player.seekTo(0, true), End: () => player.seekTo(player.getDuration(), true),
+};
+// 0–9 jump to 0%–90% of the video
+for (let d = 0; d < 10; d++) keys[d] = () => player.seekTo(player.getDuration() * d / 10, true);
 document.addEventListener('keydown', e => {
   const f = keys[e.key.length === 1 ? e.key.toLowerCase() : e.key];
   if (!f || !player?.seekTo || e.ctrlKey || e.altKey || e.metaKey || e.target.closest('input, select')) return;

@@ -3,7 +3,21 @@
 Play a YouTube playlist in any order: drag to reorder, or sort by title, upload date, shuffle or default order. Your order is saved per playlist in the browser.
 
 - **Fill window** button: the video fills the whole browser tab. Esc or ✕ exits (F11 on top for real fullscreen). Esc works even after clicking the video.
-- Hotkeys: **J** / **L** back / forward 10 s, **K** or **Space** play/pause, **←** / **→** 5 s.
+- YouTube hotkeys (when the page has focus):
+
+  | Key | Action |
+  |---|---|
+  | K / Space | play / pause |
+  | J / L | back / forward 10 s |
+  | ← / → | back / forward 5 s |
+  | ↑ / ↓ | volume ±5 % |
+  | M | mute |
+  | F | fill window |
+  | 0–9 | jump to 0–90 % |
+  | Home / End | start / end |
+  | , / . | frame back / forward (paused) |
+  | < / > | slower / faster |
+  | Shift+N / Shift+P | next / previous video |
 - Dark theme built in; the page tells Dark Reader to leave it alone.
 - SponsorBlock: not built in. The SponsorBlock browser extension works inside the embedded player.
 
