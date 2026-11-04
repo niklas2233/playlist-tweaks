@@ -168,8 +168,19 @@ $('#play').onclick = () => play();
 
 $('#fill').onclick = $('#exit').onclick = () => document.body.classList.toggle('fill');
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('fill'); });
+
+// YouTube-style hotkeys for when the page (not the iframe) has focus
+const seek = s => player.seekTo(Math.max(0, player.getCurrentTime() + s), true);
+const toggle = () => player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+const keys = { j: () => seek(-10), l: () => seek(10), k: toggle, ' ': toggle, ArrowLeft: () => seek(-5), ArrowRight: () => seek(5) };
+document.addEventListener('keydown', e => {
+  const f = keys[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+  if (!f || !player?.seekTo || e.ctrlKey || e.altKey || e.metaKey || e.target.closest('input, select')) return;
+  e.preventDefault();
+  f();
+});
 // clicking the video focuses the YouTube iframe, which swallows Esc; pull focus back while filling.
-// ponytail: costs YouTube's own keyboard shortcuts (space, arrows) in fill mode; mouse controls still work
+// The hotkeys above stand in for YouTube's own, which stop working once focus is pulled out of the iframe.
 window.addEventListener('blur', () => setTimeout(() => {
   if (document.body.classList.contains('fill')) document.activeElement?.blur();
 }));
