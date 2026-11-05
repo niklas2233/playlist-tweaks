@@ -1,6 +1,6 @@
 # playlist-tweaks
 
-Play a YouTube playlist in any order: drag to reorder, or sort by title, upload date, shuffle or default order. Your order is saved per playlist in the browser.
+Play a YouTube playlist in any order: drag to reorder, or sort by title, upload date, shuffle or default order. Your order and where you stopped (video + time) are saved per playlist in the browser: load the same playlist again and it picks up where you left off. The last playlist URL is filled in for you.
 
 - **Fill window** button: the video fills the whole browser tab. Esc or ✕ exits (F11 on top for real fullscreen). Esc works even after clicking the video.
 - YouTube hotkeys (when the page has focus):

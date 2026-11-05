@@ -64,9 +64,10 @@
   <div id="stage"><button id="exit" title="Exit (Esc)">✕</button><div id="player"></div></div>
   <ol id="list"></ol>
 </div>
+<div id="resolver" hidden></div>
 
 <script>
-let player, listId, ids = [], original = [];
+let player, resolver, resume, listId, ids = [], original = [];
 const titles = {};
 const $ = s => document.querySelector(s);
 
@@ -75,7 +76,10 @@ tag.src = 'https://www.youtube.com/iframe_api';
 document.head.append(tag);
 
 function onYouTubeIframeAPIReady() {
-  player = new YT.Player('player', { events: { onStateChange: highlight } });
+  player = new YT.Player('player', { events: { onStateChange: onState } });
+  // hidden second player that only turns a playlist ID into its video IDs. Cueing a list ID on the visible
+  // player makes it re-apply YouTube's order a second or so later, clobbering ours.
+  resolver = new YT.Player('resolver');
 }
 
 $('#load').onsubmit = e => {
@@ -83,22 +87,29 @@ $('#load').onsubmit = e => {
   const v = $('#url').value.trim();
   try { listId = new URL(v).searchParams.get('list') || v; } catch { listId = v; }
   // ponytail: let the embedded player resolve the playlist, no API key needed. YouTube caps this at ~200 videos.
-  player.cuePlaylist({ list: listId, listType: 'playlist' });
+  resolver.cuePlaylist({ list: listId, listType: 'playlist' });
   let tries = 0;
   const poll = setInterval(() => {
-    const got = player.getPlaylist();
+    // skip the previous playlist's list while the new one loads; getPlaylistId isn't documented, so fall back if it disappears
+    const got = (resolver.getPlaylistId?.() ?? listId) === listId && resolver.getPlaylist();
     if (got?.length || ++tries > 40) {
       clearInterval(poll);
       if (!got?.length) return alert('Could not load that playlist (private, or bad ID?)');
       original = got.slice();
-      // re-cue as a plain array; otherwise the player keeps the list-ID order on the next loadPlaylist
-      player.cuePlaylist(got);
-      let saved = null;
-      try { saved = JSON.parse(localStorage.getItem('order:' + listId)); } catch {}
+      let saved = null, pos = null;
+      try {
+        saved = JSON.parse(localStorage.getItem('order:' + listId));
+        pos = JSON.parse(localStorage.getItem('pos:' + listId));
+        localStorage.setItem('lastUrl', v);
+      } catch {}
       // keep saved order only if it is still the same set of videos
       const keep = saved && saved.length === got.length && saved.every(id => got.includes(id));
       ids = keep ? saved : got.slice();
       $('#sort').value = keep && saved.join() !== got.join() ? 'custom' : 'default';
+      // cue our order at the video and time we left off; a removed video just starts from the top
+      const at = ids.indexOf(pos?.id);
+      resume = at < 0 ? null : pos;
+      player.cuePlaylist({ playlist: ids, index: Math.max(0, at), startSeconds: resume?.t || 0 });
       render();
     }
   }, 250);
@@ -157,7 +168,29 @@ function play(i = 0) {
   if (ids.length) player.loadPlaylist({ playlist: ids, index: i });
 }
 
+// a freshly created player honours startSeconds while cued but restarts from 0 on the first play,
+// so seek again once the resumed video actually starts
+function onState(e) {
+  if (e.data === YT.PlayerState.PLAYING && resume) {
+    if (currentId() === resume.id && player.getCurrentTime() < resume.t - 2) player.seekTo(resume.t, true);
+    resume = null;
+  }
+  highlight();
+}
+
 const currentId = () => player?.getVideoUrl?.().match(/v=([\w-]{11})/)?.[1];
+
+// remember where we are in this playlist: video id (not index, so reordering doesn't break it) + time
+// only while playing/paused: a cued-but-unstarted player reports 0s and would wipe the saved spot
+function savePos() {
+  const id = currentId(), s = player?.getPlayerState?.();
+  if (listId && ids.includes(id) && (s === YT.PlayerState.PLAYING || s === YT.PlayerState.PAUSED)) {
+    try { localStorage.setItem('pos:' + listId, JSON.stringify({ id, t: Math.floor(player.getCurrentTime()) })); } catch {}
+  }
+}
+setInterval(savePos, 5000);
+addEventListener('pagehide', savePos);
+try { $('#url').value = localStorage.getItem('lastUrl') || ''; } catch {}
 
 function highlight() {
   const cur = currentId();
