@@ -64,7 +64,7 @@
   <div id="stage"><button id="exit" title="Exit (Esc)">✕</button><div id="player"></div></div>
   <ol id="list"></ol>
 </div>
-<div id="resolver" hidden></div>
+<div hidden><div id="resolver"></div></div><!-- YT.Player replaces #resolver itself, so hide a wrapper -->
 
 <script>
 let player, resolver, resume, listId, ids = [], original = [];
